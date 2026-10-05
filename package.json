@@ -1,0 +1,8 @@
+{
+  "name": "reservoir-lab-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Client-side ESN versus GRU hydraulic valve experiment",
+  "scripts": {"serve": "node scripts/serve.cjs", "dev": "vite", "test": "node scripts/core_check.cjs", "experiment": "node scripts/run_experiment.cjs", "test:browser": "node scripts/browser_check.cjs"},
+  "devDependencies": {"playwright": "^1.50.0", "vite": "^6.1.0"}
+}

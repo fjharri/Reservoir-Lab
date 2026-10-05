@@ -1,0 +1,332 @@
+{
+  "protocolVersion": 1,
+  "createdAt": "2026-10-04T09:44:07.403Z",
+  "config": {
+    "reservoirSize": 250,
+    "gruUnits": 16,
+    "ridge": 0.01,
+    "learningRate": 0.01,
+    "batchSize": 8,
+    "seed": 7,
+    "tolerance": 0,
+    "maxSeconds": 15,
+    "maxUpdates": 1000,
+    "checkpointEvery": 8,
+    "mode": "budget"
+  },
+  "environment": {
+    "tfjs": "4.22.0",
+    "backend": "cpu",
+    "userAgent": "Node.js/24"
+  },
+  "data": {
+    "source": {
+      "title": "Condition monitoring of hydraulic systems",
+      "authors": "Helwig, Pignanelli, Schütze (2015)",
+      "doi": "10.24432/C5CW21",
+      "license": "CC BY 4.0",
+      "uci": "https://archive.ics.uci.edu/dataset/447/condition+monitoring+of+hydraulic+systems",
+      "kaggle": "https://www.kaggle.com/datasets/jjacostupa/condition-monitoring-of-hydraulic-systems",
+      "archiveSha256": "24128aad2ee45eea7e6b63ebbd9992cdf25d0483a2cebefbfc13bc69079af1f2"
+    },
+    "splitMethod": "Seeded valve-stratified split of contiguous acquisition runs with identical first four profile columns; runs shorter than five cycles excluded; balanced cycle subsampling within split.",
+    "seed": 20261004,
+    "steps": 120,
+    "channels": [
+      "PS1",
+      "PS2",
+      "PS3",
+      "FS1",
+      "FS2",
+      "EPS1"
+    ],
+    "classes": [
+      "Optimal (100%)",
+      "Small lag (90%)",
+      "Severe lag (80%)",
+      "Near failure (73%)"
+    ],
+    "counts": {
+      "train": 400,
+      "validation": 120,
+      "test": 120
+    },
+    "splitHashes": {
+      "train": "ceaf599933643f07e7ff5788ed2c57f15f6ab8ba39ea3d10a676327745774e1a",
+      "validation": "376ba8b511ef914103805157ed6df4a0ec7be4af08e886ab057914fe71d4ad28",
+      "test": "90e5278dada68300edbce8262dfc63b300d63db8d4ac92b1ddd8d69f1ad00e73"
+    }
+  },
+  "curve": [
+    {
+      "trainingMs": 10.693476000000146,
+      "updates": 0,
+      "epoch": 0,
+      "accuracy": 0.225,
+      "loss": null
+    },
+    {
+      "trainingMs": 581.7494320000001,
+      "updates": 2,
+      "epoch": 1,
+      "accuracy": 0.24166666666666667,
+      "loss": null,
+      "selectedEqualBudget": true
+    },
+    {
+      "trainingMs": 835.7969820000003,
+      "updates": 3,
+      "epoch": 1,
+      "accuracy": 0.21666666666666667,
+      "loss": 1.4555976390838623
+    }
+  ],
+  "targetTolerance": 0,
+  "esn": {
+    "trainingMs": 663.012755,
+    "featureMs": 619.98804,
+    "readoutMs": 43.024715000000015,
+    "validationMs": 171.86568599999998,
+    "validation": {
+      "accuracy": 0.6833333333333333,
+      "count": 120,
+      "confusion": [
+        [
+          19,
+          8,
+          1,
+          2
+        ],
+        [
+          1,
+          24,
+          4,
+          1
+        ],
+        [
+          5,
+          8,
+          9,
+          8
+        ],
+        [
+          0,
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "fixedParameters": 2500,
+    "trainableParameters": 1004,
+    "test": {
+      "accuracy": 0.5083333333333333,
+      "count": 120,
+      "confusion": [
+        [
+          8,
+          21,
+          0,
+          1
+        ],
+        [
+          3,
+          12,
+          14,
+          1
+        ],
+        [
+          0,
+          18,
+          12,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          29
+        ]
+      ]
+    },
+    "testMs": 170.41910499999994
+  },
+  "targetAccuracy": 0.6833333333333333,
+  "gru": {
+    "trainableParameters": 1172,
+    "updates": 3,
+    "epochsStarted": 1,
+    "trainingMs": 835.7969820000003,
+    "equalBudget": {
+      "trainingMs": 581.7494320000001,
+      "updates": 2,
+      "epoch": 1,
+      "validation": {
+        "accuracy": 0.24166666666666667,
+        "count": 120,
+        "confusion": [
+          [
+            18,
+            12,
+            0,
+            0
+          ],
+          [
+            19,
+            11,
+            0,
+            0
+          ],
+          [
+            9,
+            21,
+            0,
+            0
+          ],
+          [
+            27,
+            3,
+            0,
+            0
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.38333333333333336,
+        "count": 120,
+        "confusion": [
+          [
+            25,
+            5,
+            0,
+            0
+          ],
+          [
+            8,
+            21,
+            1,
+            0
+          ],
+          [
+            22,
+            8,
+            0,
+            0
+          ],
+          [
+            21,
+            8,
+            1,
+            0
+          ]
+        ]
+      },
+      "testMs": 583.3808600000002
+    },
+    "matched": null,
+    "validationEvaluationMs": 1920.489335,
+    "reason": "budget-completed",
+    "budgetOvershootMs": 172.78422700000033,
+    "capOvershootMs": 0,
+    "noBudgetCheckpoint": false,
+    "finalValidation": {
+      "accuracy": 0.21666666666666667,
+      "count": 120,
+      "confusion": [
+        [
+          15,
+          15,
+          0,
+          0
+        ],
+        [
+          19,
+          11,
+          0,
+          0
+        ],
+        [
+          5,
+          25,
+          0,
+          0
+        ],
+        [
+          17,
+          13,
+          0,
+          0
+        ]
+      ]
+    },
+    "finalTest": {
+      "accuracy": 0.38333333333333336,
+      "count": 120,
+      "confusion": [
+        [
+          24,
+          6,
+          0,
+          0
+        ],
+        [
+          8,
+          21,
+          0,
+          1
+        ],
+        [
+          22,
+          8,
+          0,
+          0
+        ],
+        [
+          21,
+          8,
+          0,
+          1
+        ]
+      ]
+    },
+    "finalTrain": {
+      "accuracy": 0.28,
+      "count": 400,
+      "confusion": [
+        [
+          80,
+          20,
+          0,
+          0
+        ],
+        [
+          67,
+          32,
+          0,
+          1
+        ],
+        [
+          62,
+          38,
+          0,
+          0
+        ],
+        [
+          59,
+          41,
+          0,
+          0
+        ]
+      ]
+    },
+    "finalEvaluationMs": 3274.310485
+  },
+  "wallMs": 7630.095112,
+  "notes": [
+    "Training clock includes model setup and training operations, excludes download, validation/test and snapshot logging. ESN training includes train reservoir extraction and ridge fit.",
+    "GRU equal-budget model is the last complete batch (including setup) within the ESN budget. A batch cannot be interrupted; overshoot is excluded from this selected model.",
+    "Target is ESN validation accuracy minus the stated tolerance. Selection never uses test accuracy. First observed validation crossing is a checkpoint-based upper bound on time to target.",
+    "Both implementations use CPU in a worker and mean pooling across all 120 steps. Sparse custom JS ESN versus TensorFlow.js GRU is an implementation-level browser comparison.",
+    "A single rig and deterministic pilot split do not establish generalization to new equipment. Repeat seeds/devices; backend, width and hyperparameters affect results."
+  ]
+}

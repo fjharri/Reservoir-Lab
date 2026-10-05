@@ -1,0 +1,489 @@
+{
+  "protocolVersion": 1,
+  "createdAt": "2026-10-04T09:33:07.110Z",
+  "config": {
+    "reservoirSize": 500,
+    "gruUnits": 16,
+    "ridge": 0.01,
+    "learningRate": 0.01,
+    "batchSize": 8,
+    "seed": 42,
+    "tolerance": 0,
+    "maxSeconds": 30,
+    "maxUpdates": 1000,
+    "checkpointEvery": 8,
+    "mode": "match"
+  },
+  "environment": {
+    "tfjs": "4.22.0",
+    "backend": "cpu",
+    "userAgent": "Node.js/24"
+  },
+  "data": {
+    "source": {
+      "title": "Condition monitoring of hydraulic systems",
+      "authors": "Helwig, Pignanelli, Schütze (2015)",
+      "doi": "10.24432/C5CW21",
+      "license": "CC BY 4.0",
+      "uci": "https://archive.ics.uci.edu/dataset/447/condition+monitoring+of+hydraulic+systems",
+      "kaggle": "https://www.kaggle.com/datasets/jjacostupa/condition-monitoring-of-hydraulic-systems",
+      "archiveSha256": "24128aad2ee45eea7e6b63ebbd9992cdf25d0483a2cebefbfc13bc69079af1f2"
+    },
+    "splitMethod": "Seeded valve-stratified split of contiguous acquisition runs with identical first four profile columns; runs shorter than five cycles excluded; balanced cycle subsampling within split.",
+    "seed": 20261004,
+    "steps": 120,
+    "channels": [
+      "PS1",
+      "PS2",
+      "PS3",
+      "FS1",
+      "FS2",
+      "EPS1"
+    ],
+    "classes": [
+      "Optimal (100%)",
+      "Small lag (90%)",
+      "Severe lag (80%)",
+      "Near failure (73%)"
+    ],
+    "counts": {
+      "train": 400,
+      "validation": 120,
+      "test": 120
+    },
+    "splitHashes": {
+      "train": "ceaf599933643f07e7ff5788ed2c57f15f6ab8ba39ea3d10a676327745774e1a",
+      "validation": "376ba8b511ef914103805157ed6df4a0ec7be4af08e886ab057914fe71d4ad28",
+      "test": "90e5278dada68300edbce8262dfc63b300d63db8d4ac92b1ddd8d69f1ad00e73"
+    }
+  },
+  "curve": [
+    {
+      "trainingMs": 11.282687000000124,
+      "updates": 0,
+      "epoch": 0,
+      "accuracy": 0.2833333333333333,
+      "loss": null
+    },
+    {
+      "trainingMs": 1344.669493000001,
+      "updates": 7,
+      "epoch": 1,
+      "accuracy": 0.23333333333333334,
+      "loss": 1.2542879581451416
+    },
+    {
+      "trainingMs": 1503.7986310000013,
+      "updates": 8,
+      "epoch": 1,
+      "accuracy": 0.23333333333333334,
+      "loss": 1.3446955680847168
+    },
+    {
+      "trainingMs": 2692.5846130000027,
+      "updates": 16,
+      "epoch": 1,
+      "accuracy": 0.2916666666666667,
+      "loss": 1.3072360754013062
+    },
+    {
+      "trainingMs": 3895.852980000005,
+      "updates": 24,
+      "epoch": 1,
+      "accuracy": 0.21666666666666667,
+      "loss": 1.4316248893737793
+    },
+    {
+      "trainingMs": 5068.508692000003,
+      "updates": 32,
+      "epoch": 1,
+      "accuracy": 0.10833333333333334,
+      "loss": 1.1946409940719604
+    },
+    {
+      "trainingMs": 6264.352339000001,
+      "updates": 40,
+      "epoch": 1,
+      "accuracy": 0.09166666666666666,
+      "loss": 1.4122048616409302
+    },
+    {
+      "trainingMs": 7510.165846,
+      "updates": 48,
+      "epoch": 1,
+      "accuracy": 0.20833333333333334,
+      "loss": 1.3760604858398438
+    },
+    {
+      "trainingMs": 7832.1097789999985,
+      "updates": 50,
+      "epoch": 1,
+      "accuracy": 0.26666666666666666,
+      "loss": 1.2967063188552856
+    },
+    {
+      "trainingMs": 8689.595895999997,
+      "updates": 56,
+      "epoch": 2,
+      "accuracy": 0.3333333333333333,
+      "loss": 1.3120511770248413
+    },
+    {
+      "trainingMs": 9987.264723999995,
+      "updates": 64,
+      "epoch": 2,
+      "accuracy": 0.25833333333333336,
+      "loss": 1.327330470085144
+    },
+    {
+      "trainingMs": 11171.831125999995,
+      "updates": 72,
+      "epoch": 2,
+      "accuracy": 0.275,
+      "loss": 1.2043192386627197
+    },
+    {
+      "trainingMs": 12442.541747999998,
+      "updates": 80,
+      "epoch": 2,
+      "accuracy": 0.3416666666666667,
+      "loss": 1.2026417255401611
+    },
+    {
+      "trainingMs": 13700.081345999997,
+      "updates": 88,
+      "epoch": 2,
+      "accuracy": 0.6666666666666666,
+      "loss": 1.0250952243804932
+    },
+    {
+      "trainingMs": 14854.973881999997,
+      "updates": 96,
+      "epoch": 2,
+      "accuracy": 0.7583333333333333,
+      "loss": 0.9020034670829773
+    },
+    {
+      "trainingMs": 15531.272915999993,
+      "updates": 100,
+      "epoch": 2,
+      "accuracy": 0.8166666666666667,
+      "loss": 0.9554411172866821
+    }
+  ],
+  "targetTolerance": 0,
+  "esn": {
+    "trainingMs": 1281.0653149999998,
+    "featureMs": 1190.427996,
+    "readoutMs": 90.63731899999993,
+    "validationMs": 338.97507500000006,
+    "validation": {
+      "accuracy": 0.775,
+      "count": 120,
+      "confusion": [
+        [
+          23,
+          5,
+          1,
+          1
+        ],
+        [
+          1,
+          24,
+          5,
+          0
+        ],
+        [
+          0,
+          9,
+          16,
+          5
+        ],
+        [
+          0,
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "fixedParameters": 5000,
+    "trainableParameters": 2004,
+    "test": {
+      "accuracy": 0.6583333333333333,
+      "count": 120,
+      "confusion": [
+        [
+          25,
+          5,
+          0,
+          0
+        ],
+        [
+          2,
+          11,
+          17,
+          0
+        ],
+        [
+          0,
+          15,
+          14,
+          1
+        ],
+        [
+          0,
+          0,
+          1,
+          29
+        ]
+      ]
+    },
+    "testMs": 339.608691999998
+  },
+  "targetAccuracy": 0.775,
+  "gru": {
+    "trainableParameters": 1172,
+    "updates": 100,
+    "epochsStarted": 2,
+    "trainingMs": 15531.272915999993,
+    "equalBudget": {
+      "trainingMs": 1164.4196050000007,
+      "updates": 6,
+      "epoch": 1,
+      "validation": {
+        "accuracy": 0.24166666666666667,
+        "count": 120,
+        "confusion": [
+          [
+            6,
+            3,
+            20,
+            1
+          ],
+          [
+            11,
+            6,
+            7,
+            6
+          ],
+          [
+            5,
+            0,
+            17,
+            8
+          ],
+          [
+            10,
+            5,
+            15,
+            0
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.36666666666666664,
+        "count": 120,
+        "confusion": [
+          [
+            24,
+            0,
+            4,
+            2
+          ],
+          [
+            3,
+            5,
+            9,
+            13
+          ],
+          [
+            11,
+            5,
+            11,
+            3
+          ],
+          [
+            20,
+            0,
+            6,
+            4
+          ]
+        ]
+      },
+      "testMs": 630.0992869999973
+    },
+    "matched": {
+      "trainingMs": 15531.272915999993,
+      "updates": 100,
+      "epoch": 2,
+      "accuracy": 0.8166666666666667,
+      "loss": 0.9554411172866821,
+      "validation": {
+        "accuracy": 0.8166666666666667,
+        "count": 120,
+        "confusion": [
+          [
+            24,
+            6,
+            0,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            14,
+            16
+          ],
+          [
+            0,
+            0,
+            0,
+            30
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.7916666666666666,
+        "count": 120,
+        "confusion": [
+          [
+            13,
+            17,
+            0,
+            0
+          ],
+          [
+            0,
+            29,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            23,
+            7
+          ],
+          [
+            0,
+            0,
+            0,
+            30
+          ]
+        ]
+      },
+      "testMs": 789.4174940000012
+    },
+    "validationEvaluationMs": 11123.248631000006,
+    "reason": "target-reached",
+    "budgetOvershootMs": 63.604178000001184,
+    "capOvershootMs": 0,
+    "noBudgetCheckpoint": false,
+    "finalValidation": {
+      "accuracy": 0.8166666666666667,
+      "count": 120,
+      "confusion": [
+        [
+          24,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          30,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          14,
+          16
+        ],
+        [
+          0,
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "finalTest": {
+      "accuracy": 0.7916666666666666,
+      "count": 120,
+      "confusion": [
+        [
+          13,
+          17,
+          0,
+          0
+        ],
+        [
+          0,
+          29,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          23,
+          7
+        ],
+        [
+          0,
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "finalTrain": {
+      "accuracy": 0.9125,
+      "count": 400,
+      "confusion": [
+        [
+          84,
+          16,
+          0,
+          0
+        ],
+        [
+          0,
+          99,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          82,
+          18
+        ],
+        [
+          0,
+          0,
+          0,
+          100
+        ]
+      ]
+    },
+    "finalEvaluationMs": 3396.806724000002
+  },
+  "wallMs": 33717.524253999996,
+  "notes": [
+    "Training clock includes model setup and training operations, excludes download, validation/test and snapshot logging. ESN training includes train reservoir extraction and ridge fit.",
+    "GRU equal-budget model is the last complete batch (including setup) within the ESN budget. A batch cannot be interrupted; overshoot is excluded from this selected model.",
+    "Target is ESN validation accuracy minus the stated tolerance. Selection never uses test accuracy. First observed validation crossing is a checkpoint-based upper bound on time to target.",
+    "Both implementations use CPU in a worker and mean pooling across all 120 steps. Sparse custom JS ESN versus TensorFlow.js GRU is an implementation-level browser comparison.",
+    "A single rig and deterministic pilot split do not establish generalization to new equipment. Repeat seeds/devices; backend, width and hyperparameters affect results."
+  ]
+}

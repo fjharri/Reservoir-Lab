@@ -1,0 +1,33 @@
+const fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright':'playwright');
+const root=path.resolve(__dirname,'..');
+(async()=>{
+ fs.mkdirSync(path.join(root,'work'),{recursive:true});
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.PILOT_CHROME_PATH?{executablePath:process.env.PILOT_CHROME_PATH}:{})});
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}), errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765',{waitUntil:'networkidle'});
+ await page.screenshot({path:path.join(root,'work/desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:path.join(root,'work/mobile.png'),fullPage:true});
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+ if(overflow) throw Error('Mobile horizontal overflow');
+ // Check cancellation resets the form even during synchronous reservoir computation.
+ await page.locator('#run').click(); await page.locator('#stop').click();
+ if(await page.locator('#run').isDisabled()) throw Error('Stop did not restore form');
+ await page.locator('#run').click();
+ await page.waitForFunction(()=>document.getElementById('status').textContent==='Experiment complete'||document.getElementById('status').textContent.startsWith('Experiment failed'),{timeout:90000});
+ const text=await page.locator('#status').innerText();if(text!=='Experiment complete') throw Error(text);
+ const result=await page.evaluate(()=>JSON.parse(JSON.stringify(globalThis.eval('result'))));
+ fs.writeFileSync(path.join(root,'work/browser-match.json'),JSON.stringify(result,null,2));
+ if(result.gru.equalBudget&&result.gru.equalBudget.trainingMs>result.esn.trainingMs) throw Error('Selected GRU exceeded budget');
+ if(result.esn.test.count!==120) throw Error('Test count incorrect');
+ await page.locator('#matrixModel').selectOption('equal');
+ await page.screenshot({path:path.join(root,'work/mobile-result.png'),fullPage:true});
+ await page.setViewportSize({width:1440,height:1100});
+ await page.screenshot({path:path.join(root,'work/desktop-result.png'),fullPage:true});
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadJson').click()]);
+ await download.saveAs(path.join(root,'work/download-check.json'));
+ console.log(JSON.stringify({errors,overflow,esnMs:result.esn.trainingMs,esnTest:result.esn.test.accuracy,gruEqual:result.gru.equalBudget?.test?.accuracy,updates:result.gru.equalBudget?.updates,download:download.suggestedFilename()}));
+ await browser.close();if(errors.length)process.exitCode=1;
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,14 @@
+.setting-note {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+  margin: 5px 1px 10px;
+}
+
+.scorecards .score:nth-child(n + 3) {
+  border-top: 1px solid var(--line);
+}
+
+.scorecards .score:nth-child(odd) {
+  border-right: 1px solid var(--line);
+}

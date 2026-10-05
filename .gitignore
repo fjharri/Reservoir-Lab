@@ -1,0 +1,6 @@
+node_modules/
+.firebase/
+work/
+.DS_Store
+npm-debug.log*
+*.local

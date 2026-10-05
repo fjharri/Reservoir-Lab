@@ -1,0 +1,8 @@
+{
+  "package": "@tensorflow/tfjs",
+  "version": "4.22.0",
+  "source": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js",
+  "sha256": "300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831",
+  "license": "Apache-2.0",
+  "licenseFile": "LICENSE-tensorflowjs.txt"
+}
