@@ -119,16 +119,16 @@ function finish(){
 function comparisonText(value){return value>=0?`${value.toFixed(0)}% lower`:`${Math.abs(value).toFixed(0)}% higher`;}
 function completeRun(status='Experiment complete'){setRunning(false);setStatus(status);}
 function startAudit(){
-  $('seedAudit').hidden=false;$('auditSummary').textContent='Running seed 1 of 5…';setStatus('Running optional five-seed audit…',true);
-  auditWorker=new Worker('/examples/double-pendulum/audit-worker.js?v=0.6.0');
+  $('seedAudit').hidden=false;$('auditSummary').textContent='Running model seed 1 of 5…';setStatus('Model-seed check — seed 1 of 5…',true);
+  auditWorker=new Worker('/examples/double-pendulum/audit-worker.js?v=0.7.0');
   auditWorker.onmessage=({data})=>{
-    if(data.type==='progress'){$('auditSummary').textContent=`Completed ${data.complete} of ${data.total} seeds…`;return;}
+    if(data.type==='progress'){$('auditSummary').textContent=`Completed ${data.complete} of ${data.total} model seeds…`;if(data.complete<data.total)setStatus(`Model-seed check — seed ${data.complete+1} of ${data.total}…`,true);return;}
     if(data.type==='error'){$('auditSummary').textContent='Audit failed: '+data.message;auditWorker?.terminate();auditWorker=null;completeRun('Live experiment complete — audit failed');return;}
     if(data.type!=='complete')return;
     const values=data.results.map(result=>result.advantage).sort((a,b)=>a-b),median=values[Math.floor(values.length/2)],better=data.results.filter(result=>result.advantage>0).length;
-    $('auditSummary').textContent=`Across fixed seeds 1, 7, 42, 99 and 123, adaptive was better in ${better}/5 runs. Median: ${comparisonText(median)}; range: ${comparisonText(values[0])} to ${comparisonText(values.at(-1))}.`;
+    $('auditSummary').textContent=`Across five reservoir initializations on the same simulated trajectory, adaptive was better in ${better}/5 runs. Median: ${comparisonText(median)}; range: ${comparisonText(values[0])} to ${comparisonText(values[values.length-1])}.`;
     for(const result of data.results){const row=document.createElement('tr');for(const value of [result.seed,result.adaptive.toFixed(1)+'°',result.frozen.toFixed(1)+'°',comparisonText(result.advantage)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}$('auditRows').append(row);}
-    auditWorker?.terminate();auditWorker=null;completeRun('Experiment and five-seed audit complete');
+    auditWorker?.terminate();auditWorker=null;completeRun('Experiment and model-seed check complete');
   };
   auditWorker.onerror=event=>{ $('auditSummary').textContent='Audit failed: '+event.message;auditWorker?.terminate();auditWorker=null;completeRun('Live experiment complete — audit failed'); };
   auditWorker.postMessage({type:'run',config:{rate:config.rate,horizon:config.horizon,duration:config.duration,size:config.size,scenario:config.scenario,sensorNoise:config.sensorNoise}});
@@ -171,10 +171,11 @@ function drawChart(){
 
 $('pendulumSetup').addEventListener('submit',event=>{
   event.preventDefault();stopExperiment('Preparing the reservoir…');resetMetrics();config=readConfig();setRunning(true);setStatus('Preparing the fixed reservoir…',true);
-  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.6.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
+  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.7.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
   worker.postMessage({type:'init',size:config.size,seed:config.seed,horizon:config.horizon});
   if(innerWidth<=650)document.querySelector('.pendulum-results').scrollIntoView({behavior:'smooth',block:'start'});
 });
 $('stopPendulum').addEventListener('click',()=>stopExperiment());
 addEventListener('resize',()=>{drawPendulum();drawChart();});
+$('runFinding').after($('seedAudit'));
 config=readConfig();state=[1.72,0,1.08,0];physics={m1:1,m2:1,l1:1,l2:1,g:9.81,damping:.015};drawPendulum();drawChart();

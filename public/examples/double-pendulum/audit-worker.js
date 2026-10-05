@@ -1,5 +1,5 @@
 'use strict';
-importScripts('core.js?v=0.6.0');
+importScripts('core.js?v=0.7.0');
 
 const seeds=[1,7,42,99,123];
 const scenarios={
