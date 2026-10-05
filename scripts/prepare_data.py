@@ -61,7 +61,7 @@ def main():
         scale = math.sqrt(sum((v-mean)**2 for v in vals)/len(vals))
         means.append(mean)
         scales.append(max(scale, 1e-8))
-    out = ROOT/'public/data'
+    out = ROOT/'public/examples/hydraulic/data'
     out.mkdir(parents=True, exist_ok=True)
     metadata = {'version': 1, 'seed': SEED, 'steps': STEPS, 'durationSeconds': 60,
                 'channels': CHANNELS, 'classes': CLASSES, 'task': 'Valve condition',

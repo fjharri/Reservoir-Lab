@@ -1,20 +1,34 @@
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright':'playwright');
 const root=path.resolve(__dirname,'..');
+const baseUrl=process.env.RESERVOIR_LAB_URL||'http://127.0.0.1:8765';
 (async()=>{
  fs.mkdirSync(path.join(root,'work'),{recursive:true});
  const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.PILOT_CHROME_PATH?{executablePath:process.env.PILOT_CHROME_PATH}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:1100}}), errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:8765',{waitUntil:'networkidle'});
+ await page.goto(baseUrl,{waitUntil:'networkidle'});
  await page.screenshot({path:path.join(root,'work/desktop.png'),fullPage:true});
+ await page.locator('a[href="/examples/double-pendulum/"]').first().click();
+ await page.waitForLoadState('networkidle');
+ if(!(await page.locator('h1').innerText()).includes('Learn while')) throw Error('Pendulum route did not render');
+ await page.screenshot({path:path.join(root,'work/pendulum.png'),fullPage:true});
+ await page.goto(baseUrl,{waitUntil:'networkidle'});
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:path.join(root,'work/mobile.png'),fullPage:true});
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
  if(overflow) throw Error('Mobile horizontal overflow');
  // Check cancellation resets the form even during synchronous reservoir computation.
- await page.locator('#run').click(); await page.locator('#stop').click();
+ await page.locator('#reservoirSize').selectOption('100');
+ await page.locator('#run').click();
+ await page.waitForFunction(()=>{const text=document.getElementById('status').textContent;return text.startsWith('ESN:')||text.startsWith('GRU:')||text.startsWith('Experiment failed');},{timeout:20000});
+ if((await page.locator('#status').innerText()).startsWith('Experiment failed')) throw Error(await page.locator('#status').innerText());
+ await page.locator('#stop').click();
  if(await page.locator('#run').isDisabled()) throw Error('Stop did not restore form');
+ if(process.env.BROWSER_SMOKE_ONLY==='1') {
+  console.log(JSON.stringify({errors,overflow,routes:['/','/examples/double-pendulum/'],worker:'started',cancellation:'passed'}));
+  await browser.close();if(errors.length)process.exitCode=1;return;
+ }
  await page.locator('#run').click();
  await page.waitForFunction(()=>document.getElementById('status').textContent==='Experiment complete'||document.getElementById('status').textContent.startsWith('Experiment failed'),{timeout:90000});
  const text=await page.locator('#status').innerText();if(text!=='Experiment complete') throw Error(text);

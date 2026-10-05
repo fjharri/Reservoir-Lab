@@ -56,7 +56,7 @@ $('setup').addEventListener('submit',event=> {
   $('match').textContent='The ESN’s full training time becomes the GRU’s comparison budget.';$('progressFill').style.width='0';$('progressLabel').textContent='';
   running(true);status('Loading sensor data and the training engine…',true);
   if(innerWidth<=650) document.querySelector('.results').scrollIntoView({behavior:'instant',block:'start'});
-  worker=new Worker('worker.js?v=0.2.0');
+  worker=new Worker('/examples/hydraulic/worker.js?v=0.3.0');
   worker.onmessage=({data:event})=> {
     if(event.type==='status') status(event.message,true);
     if(event.type==='esn') {esn=event.esn;$('esnTime').textContent=time(esn.trainingMs);$('esnVal').textContent=pct(esn.validation.accuracy);$('esnParams').textContent=esn.trainableParameters.toLocaleString();chart();status('GRU: learning through backpropagation…',true);}

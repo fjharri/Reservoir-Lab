@@ -1,4 +1,4 @@
-importScripts('vendor/tf.min.js', 'esn.js?v=0.2.0', 'experiment.js?v=0.2.0');
+importScripts('../../vendor/tf.min.js', 'esn.js?v=0.3.0', 'experiment.js?v=0.3.0');
 self.onmessage=async ({data:message})=> {
   try {
     const meta=await (await fetch('data/metadata.json')).json();

@@ -1,11 +1,11 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const C=require('../public/esn.js'),root=path.resolve(__dirname,'..');
-const E=require('../public/experiment.js');
-const meta=JSON.parse(fs.readFileSync(path.join(root,'public/data/metadata.json')));
+const C=require('../public/examples/hydraulic/esn.js'),root=path.resolve(__dirname,'..');
+const E=require('../public/examples/hydraulic/experiment.js');
+const meta=JSON.parse(fs.readFileSync(path.join(root,'public/examples/hydraulic/data/metadata.json')));
 const sets=Object.values(meta.splits).map(s=>new Set(s.runIds));
 for(let i=0;i<sets.length;i++)for(let j=i+1;j<sets.length;j++)assert.equal([...sets[i]].filter(x=>sets[j].has(x)).length,0,'Acquisition runs must not cross splits');
 const cycles=Object.values(meta.splits).flatMap(s=>s.cycleIds);assert.equal(new Set(cycles).size,640);
-const b=fs.readFileSync(path.join(root,'public/data/train.bin'));const data=new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
+const b=fs.readFileSync(path.join(root,'public/examples/hydraulic/data/train.bin'));const data=new Float32Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
 assert.equal(data.length,400*120*6);
 for(let c=0;c<6;c++) {let mean=0,sq=0,n=0;for(let i=c;i<data.length;i+=6){mean+=data[i];sq+=data[i]**2;n++;}assert.ok(Math.abs(mean/n)<1e-5);assert.ok(Math.abs(sq/n-1)<1e-5);}
 // Independent SPD solve checked against its original equations.

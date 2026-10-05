@@ -67,7 +67,7 @@ The pilot was prepared from UCI, not the Kaggle mirror. Changes: six raw sensor 
 
 There are 100 training, 30 validation and 30 test cycles per valve class. Contiguous runs with identical first four profile columns are grouped; runs shorter than five cycles are excluded. Group assignment is seeded and valve-stratified, then cycles are sampled within each split. No cycle or acquisition run crosses splits. This reduces adjacent-cycle leakage but does not establish transfer to a different rig, and repeated configurations may still occur in different runs. The sample is balanced by design, so its class proportions do not represent field prevalence.
 
-`public/data/metadata.json` records cycle IDs, acquisition-run IDs, all original five profile values, class names, split method, train scaling, source attribution and SHA-256 hashes. Cooler, pump and accumulator labels are retained for a future shared-reservoir extension; their additional readout UI is not implemented in v0.1. Random seeds are separate for data preparation (20261004) and models (default 42).
+`public/examples/hydraulic/data/metadata.json` records cycle IDs, acquisition-run IDs, all original five profile values, class names, split method, train scaling, source attribution and SHA-256 hashes. Cooler, pump and accumulator labels are retained for a future shared-reservoir extension; their additional readout UI is not implemented in v0.1. Random seeds are separate for data preparation (20261004) and models (default 42).
 
 To reproduce data preparation, download the [original archive](https://archive.ics.uci.edu/static/public/447/condition+monitoring+of+hydraulic+systems.zip) and run with Python 3.9+:
 
@@ -109,10 +109,13 @@ For lab evidence, freeze a configuration before collecting runs. Repeat model se
 
 ## Source map
 
-- `public/esn.js`: reservoir dynamics, pooled features, ridge solve and metrics.
-- `public/experiment.js`: shared ESN/GRU experiment and selection protocol.
-- `public/worker.js`: data loading and CPU training away from the UI thread.
-- `public/app.js`, `index.html`, `styles.css`: responsive controls, curves and exports.
+- `public/index.html`: experiment 01 and the site landing page.
+- `public/assets/`: shared site shell and navigation styles.
+- `public/examples/hydraulic/esn.js`: reservoir dynamics, pooled features, ridge solve and metrics.
+- `public/examples/hydraulic/experiment.js`: shared ESN/GRU experiment and selection protocol.
+- `public/examples/hydraulic/worker.js`: data loading and CPU training away from the UI thread.
+- `public/examples/hydraulic/app.js` and `styles.css`: hydraulic controls, results, curves and exports.
+- `public/examples/double-pendulum/`: isolated shell for experiment 02; its simulation and learning runtime are intentionally not implemented yet.
 - `scripts/`: data preparation, numerical/data checks, local server and browser checks.
 - `public/vendor/`: bundled TensorFlow.js and its Apache 2.0 license.
 
