@@ -12,7 +12,19 @@ const baseUrl=process.env.RESERVOIR_LAB_URL||'http://127.0.0.1:8765';
  await page.locator('a[href="/examples/double-pendulum/"]').first().click();
  await page.waitForLoadState('networkidle');
  if(!(await page.locator('h1').innerText()).includes('Learn while')) throw Error('Pendulum route did not render');
+ await page.locator('#reservoirSize').selectOption(process.env.PENDULUM_FULL_ONLY==='1'?'200':'100');await page.locator('#duration').selectOption('15');await page.locator('#startPendulum').click();
+ await page.waitForFunction(()=>document.getElementById('updateTime').textContent!=='—',{timeout:10000});
+ await page.waitForFunction(()=>parseFloat(document.getElementById('pendulumClock').textContent)>=6.2,{timeout:12000});
+ if((await page.locator('#pendulumStatus').innerText()).startsWith('Experiment failed')) throw Error(await page.locator('#pendulumStatus').innerText());
  await page.screenshot({path:path.join(root,'work/pendulum.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});const pendulumOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);if(pendulumOverflow)throw Error('Pendulum mobile horizontal overflow');await page.screenshot({path:path.join(root,'work/pendulum-mobile.png'),fullPage:true});await page.setViewportSize({width:1440,height:1100});
+ if(process.env.PENDULUM_FULL_ONLY==='1'){
+  await page.waitForFunction(()=>document.getElementById('pendulumStatus').textContent==='Experiment complete',{timeout:15000});
+  await page.screenshot({path:path.join(root,'work/pendulum-result.png'),fullPage:true});
+  const metrics=await page.evaluate(()=>({error:document.getElementById('forecastError').textContent,update:document.getElementById('updateTime').textContent,missed:document.getElementById('deadlinesMissed').textContent,recovery:document.getElementById('recoveryTime').textContent,finding:document.getElementById('runFinding').textContent}));
+  console.log(JSON.stringify({errors,overflow:false,pendulum:metrics}));await browser.close();if(errors.length)process.exitCode=1;return;
+ }
+ await page.locator('#stopPendulum').click();
  await page.goto(baseUrl,{waitUntil:'networkidle'});
  await page.setViewportSize({width:390,height:844});
  await page.screenshot({path:path.join(root,'work/mobile.png'),fullPage:true});

@@ -1,6 +1,9 @@
-# Reservoir Lab — hydraulic valve pilot
+# Reservoir Lab — client-side recurrent learning experiments
 
-A working browser experiment comparing a fixed echo-state network (ESN) with a trainable gated recurrent unit (GRU). All model training and inference run on the visitor's device, in a Web Worker. Firebase Hosting only serves static files. No database, Firebase SDK, API key or server-side ML is needed.
+Reservoir Lab contains interactive browser experiments about recurrent learning under constrained compute. All model training and inference run on the visitor's device in Web Workers. Firebase Hosting only serves static files. No database, Firebase SDK, API key or server-side ML is needed.
+
+- **01 · Hydraulic comparison:** a fixed echo-state network (ESN) and a trainable gated recurrent unit (GRU) classify hydraulic valve condition under measured training budgets.
+- **02 · Adaptive double pendulum:** a sparse ESN forecasts a chaotic physical system, updates its linear readout after every observation, and adapts when the system parameters change during the stream.
 
 ## Run locally
 
@@ -115,7 +118,7 @@ For lab evidence, freeze a configuration before collecting runs. Repeat model se
 - `public/examples/hydraulic/experiment.js`: shared ESN/GRU experiment and selection protocol.
 - `public/examples/hydraulic/worker.js`: data loading and CPU training away from the UI thread.
 - `public/examples/hydraulic/app.js` and `styles.css`: hydraulic controls, results, curves and exports.
-- `public/examples/double-pendulum/`: isolated shell for experiment 02; its simulation and learning runtime are intentionally not implemented yet.
+- `public/examples/double-pendulum/`: live double-pendulum simulation, sparse ESN worker, online recursive-least-squares readout and deadline/error visualisation for experiment 02.
 - `scripts/`: data preparation, numerical/data checks, local server and browser checks.
 - `public/vendor/`: bundled TensorFlow.js and its Apache 2.0 license.
 
