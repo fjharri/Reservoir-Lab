@@ -1,8 +1,9 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const canvas=$('pendulumCanvas'),chartCanvas=$('errorChart');
-let worker=null,timer=null,noticeTimer=null,finishTimer=null,running=false,settling=false;
+let worker=null,auditWorker=null,timer=null,noticeTimer=null,finishTimer=null,running=false,settling=false;
 let state,physics,config,sampleId,totalSteps,changeStep,changed,latestAdaptive,latestFrozen;
+let sensorModel=null;
 let predictions=new Map(),adaptiveErrors=[],frozenErrors=[],recentErrors=[],adaptiveAverage=null,frozenAverage=null,adaptivePostTotal=0,frozenPostTotal=0,postCount=0;
 let updateAverage=null,deadlineMisses=0,responseCount=0,recoveryStreak=0,recoverySeconds=null,baselineError=null,trail=[];
 let scheduleStartedAt=0,scheduleEndedAt=0,sentSamples=0,droppedSamples=0,lateTicks=0,inFlight=0;
@@ -17,32 +18,34 @@ const scenarios={
 
 function readConfig(){
   const rate=+$('sampleRate').value,horizonMs=+$('forecastHorizon').value;
-  return {rate,horizonMs,horizon:Math.max(1,Math.round(rate*horizonMs/1000)),duration:+$('duration').value,size:+$('reservoirSize').value,seed:+$('pendulumSeed').value,scenario:$('physicsChange').value,interval:1000/rate};
+  return {rate,horizonMs,horizon:Math.max(1,Math.round(rate*horizonMs/1000)),duration:+$('duration').value,size:+$('reservoirSize').value,seed:+$('pendulumSeed').value,scenario:$('physicsChange').value,sensorNoise:$('sensorNoise').checked,audit:$('seedAuditToggle').checked,interval:1000/rate};
 }
 function setStatus(text,busy=false){$('pendulumStatus').textContent=text;$('pendulumStatusDot').classList.toggle('busy',busy);}
-function setRunning(active){running=active;$('pendulumFields').disabled=active;$('startPendulum').disabled=active;$('stopPendulum').hidden=!active;}
+function setRunning(active){running=active;$('pendulumFields').disabled=active;$('seedAuditToggle').disabled=active;$('sensorNoise').disabled=active;$('startPendulum').disabled=active;$('stopPendulum').hidden=!active;}
 function resetMetrics(){
   predictions=new Map();adaptiveErrors=[];frozenErrors=[];recentErrors=[];adaptiveAverage=null;frozenAverage=null;adaptivePostTotal=0;frozenPostTotal=0;postCount=0;updateAverage=null;deadlineMisses=0;responseCount=0;recoveryStreak=0;recoverySeconds=null;baselineError=null;trail=[];latestAdaptive=null;latestFrozen=null;
   scheduleStartedAt=0;scheduleEndedAt=0;sentSamples=0;droppedSamples=0;lateTicks=0;inFlight=0;settling=false;
   $('forecastError').textContent='—';$('frozenError').textContent='—';$('updateTime').textContent='—';$('deadlinesMissed').textContent='—';$('recoveryTime').textContent='—';$('recoveryNote').textContent='must beat frozen for 2 s';$('pendulumClock').textContent='0.0 s';$('pendulumProgress').style.width='0';$('changeNotice').hidden=true;
   $('achievedRate').textContent='—';$('lateTicks').textContent='0';$('droppedSamples').textContent='0';$('clockDrift').textContent='—';
+  $('seedAudit').hidden=true;$('auditSummary').textContent='';$('auditRows').replaceChildren();
   $('runFinding').textContent='This is an engineered parameter-switch stress test. The physics changes 40% into the run and creates a frozen no-learning counterfactual.';
   drawChart();
 }
 function begin(){
   state=[1.72,0,1.08,0];physics={m1:1,m2:1,l1:1,l2:1,g:9.81,damping:.015};sampleId=0;totalSteps=config.duration*config.rate;changeStep=Math.round(totalSteps*.4);changed=false;
+  sensorModel=config.sensorNoise?PendulumCore.createSensorModel({rate:config.rate,seed:config.seed^0x51f15e}):null;
   $('deadlineText').textContent=`${config.interval.toFixed(1)} ms deadline`;
-  setStatus('Learning the initial dynamics…',true);setRunning(true);scheduleStartedAt=performance.now();sendSample(PendulumCore.observation(state),scheduleStartedAt);drawPendulum();scheduleNext();
+  setStatus('Learning the initial dynamics…',true);setRunning(true);scheduleStartedAt=performance.now();sendSample(sensorModel?sensorModel.observe(state):PendulumCore.observation(state),scheduleStartedAt);drawPendulum();scheduleNext();
 }
 function advanceSample(deliver){
   sampleId++;
   if(sampleId===changeStep) applyPhysicsChange();
   state=PendulumCore.stepPhysics(state,physics,1/config.rate);
-  const actual=PendulumCore.observation(state),prediction=predictions.get(sampleId);
-  if(prediction){recordError(PendulumCore.angularErrorDegrees(prediction.adaptive,actual),prediction.frozen?PendulumCore.angularErrorDegrees(prediction.frozen,actual):null);predictions.delete(sampleId);}
+  const truth=PendulumCore.observation(state),observation=sensorModel?sensorModel.observe(state):truth,prediction=predictions.get(sampleId);
+  if(prediction){recordError(PendulumCore.angularErrorDegrees(prediction.adaptive,truth),prediction.frozen?PendulumCore.angularErrorDegrees(prediction.frozen,truth):null);predictions.delete(sampleId);}
   trail.push(position(state[0],state[2]));if(trail.length>90)trail.shift();
   const scheduledAt=scheduleStartedAt+sampleId*config.interval;
-  if(deliver)sendSample(actual,scheduledAt);else droppedSamples++;
+  if(deliver)sendSample(observation,scheduledAt);else droppedSamples++;
 }
 function schedule(){
   if(!running||settling)return;
@@ -68,7 +71,7 @@ function updateScheduleMetrics(now=performance.now()){
 function applyPhysicsChange(){
   changed=true;baselineError=recentErrors.length?recentErrors.reduce((a,b)=>a+b,0)/recentErrors.length:null;
   worker?.postMessage({type:'freeze'});const scenario=scenarios[config.scenario];scenario.apply(physics);$('changeDescription').textContent=scenario.description;$('changeNotice').hidden=false;
-  $('runFinding').textContent='The readout has split in two: green keeps adapting; red is frozen at the old physics. Both receive the same reservoir state.';
+  $('runFinding').textContent=`The readout has split in two: green keeps adapting; red is frozen at the old physics. Both receive the same ${config.sensorNoise?'noisy sensor':'simulator'} stream.`;
   clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{$('changeNotice').hidden=true;},2800);setStatus('Physics changed — adapting online…',true);
 }
 function recordError(adaptiveValue,frozenValue){
@@ -85,7 +88,7 @@ function recordError(adaptiveValue,frozenValue){
   if(adaptiveErrors.length%3===0)drawChart();
 }
 function handleWorker(message){
-  if(message.type==='ready'){$('runFinding').textContent=`Reservoir ready: ${config.size} fixed neurons, ${message.featureSize} readout features, ${(message.memoryBytes/1048576).toFixed(2)} MB model state.`;begin();return;}
+  if(message.type==='ready'){$('runFinding').textContent=`Reservoir ready: ${config.size} fixed neurons, ${message.featureSize} readout features, ${(message.memoryBytes/1048576).toFixed(2)} MB model state${config.sensorNoise?', using noisy angles and derived velocity': ''}.`;begin();return;}
   if(message.type==='error'){stopExperiment('Experiment failed: '+message.message);return;}
   if(message.type==='frozen')return;
   if(message.type!=='prediction'||!running)return;
@@ -103,17 +106,35 @@ function endSchedule(){
 function finish(){
   if(!running)return;clearTimeout(finishTimer);finishTimer=null;
   if(inFlight>0){deadlineMisses+=inFlight;responseCount+=inFlight;inFlight=0;$('deadlinesMissed').textContent=deadlineMisses.toLocaleString();}
-  worker?.terminate();worker=null;setRunning(false);settling=false;setStatus('Experiment complete');$('pendulumProgress').style.width='100%';
+  worker?.terminate();worker=null;settling=false;$('pendulumProgress').style.width='100%';
   const preMean=baselineError,adaptivePost=postCount?adaptivePostTotal/postCount:NaN,frozenPost=postCount?frozenPostTotal/postCount:NaN,advantage=Number.isFinite(frozenPost)&&frozenPost>0?(1-adaptivePost/frozenPost)*100:NaN,missRate=responseCount?deadlineMisses/responseCount*100:0;
   const comparison=Number.isFinite(advantage)?advantage>=0?`${advantage.toFixed(0)}% lower`:`${Math.abs(advantage).toFixed(0)}% higher`:'';
   const wallSeconds=(scheduleEndedAt-scheduleStartedAt)/1000,achieved=Math.max(0,sentSamples-1)/Math.max(.001,wallSeconds),drift=scheduleEndedAt-(scheduleStartedAt+totalSteps*config.interval);
   $('achievedRate').textContent=achieved.toFixed(1)+' Hz';$('lateTicks').textContent=lateTicks.toLocaleString();$('droppedSamples').textContent=droppedSamples.toLocaleString();$('clockDrift').textContent=(drift>=0?'+':'')+drift.toFixed(1)+' ms';
   if(recoverySeconds===null){$('recoveryTime').textContent='Not yet';$('recoveryNote').textContent='within this run';}
-  $('runFinding').textContent=`Engineered ${scenarios[config.scenario].description.toLowerCase()}: during the three seconds before the switch, mean error was ${Number.isFinite(preMean)?preMean.toFixed(1)+'°':'unavailable'}. Afterwards, adaptive averaged ${Number.isFinite(adaptivePost)?adaptivePost.toFixed(1)+'°':'unavailable'} versus ${Number.isFinite(frozenPost)?frozenPost.toFixed(1)+'°':'unavailable'} frozen${comparison?` — ${comparison}`:''}. The stream achieved ${achieved.toFixed(1)} Hz, dropped ${droppedSamples} samples and missed ${deadlineMisses} of ${responseCount} response deadlines (${missRate.toFixed(1)}%)${recoverySeconds===null?'; recovery was not confirmed':` with recovery confirmed after ${recoverySeconds.toFixed(1)} seconds`}.`;
-  drawChart();
+  const sensorText=config.sensorNoise?' Inputs were 0.35° noisy, 0.1° quantized angles; angular velocity was estimated from those readings.':'';
+  $('runFinding').textContent=`Engineered ${scenarios[config.scenario].description.toLowerCase()}: during the three seconds before the switch, mean error was ${Number.isFinite(preMean)?preMean.toFixed(1)+'°':'unavailable'}. Afterwards, adaptive averaged ${Number.isFinite(adaptivePost)?adaptivePost.toFixed(1)+'°':'unavailable'} versus ${Number.isFinite(frozenPost)?frozenPost.toFixed(1)+'°':'unavailable'} frozen${comparison?` — ${comparison}`:''}. The stream achieved ${achieved.toFixed(1)} Hz, dropped ${droppedSamples} samples and missed ${deadlineMisses} of ${responseCount} response deadlines (${missRate.toFixed(1)}%)${recoverySeconds===null?'; recovery was not confirmed':` with recovery confirmed after ${recoverySeconds.toFixed(1)} seconds`}.${sensorText}`;
+  drawChart();if(config.audit)startAudit();else completeRun();
+}
+function comparisonText(value){return value>=0?`${value.toFixed(0)}% lower`:`${Math.abs(value).toFixed(0)}% higher`;}
+function completeRun(status='Experiment complete'){setRunning(false);setStatus(status);}
+function startAudit(){
+  $('seedAudit').hidden=false;$('auditSummary').textContent='Running seed 1 of 5…';setStatus('Running optional five-seed audit…',true);
+  auditWorker=new Worker('/examples/double-pendulum/audit-worker.js?v=0.6.0');
+  auditWorker.onmessage=({data})=>{
+    if(data.type==='progress'){$('auditSummary').textContent=`Completed ${data.complete} of ${data.total} seeds…`;return;}
+    if(data.type==='error'){$('auditSummary').textContent='Audit failed: '+data.message;auditWorker?.terminate();auditWorker=null;completeRun('Live experiment complete — audit failed');return;}
+    if(data.type!=='complete')return;
+    const values=data.results.map(result=>result.advantage).sort((a,b)=>a-b),median=values[Math.floor(values.length/2)],better=data.results.filter(result=>result.advantage>0).length;
+    $('auditSummary').textContent=`Across fixed seeds 1, 7, 42, 99 and 123, adaptive was better in ${better}/5 runs. Median: ${comparisonText(median)}; range: ${comparisonText(values[0])} to ${comparisonText(values.at(-1))}.`;
+    for(const result of data.results){const row=document.createElement('tr');for(const value of [result.seed,result.adaptive.toFixed(1)+'°',result.frozen.toFixed(1)+'°',comparisonText(result.advantage)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}$('auditRows').append(row);}
+    auditWorker?.terminate();auditWorker=null;completeRun('Experiment and five-seed audit complete');
+  };
+  auditWorker.onerror=event=>{ $('auditSummary').textContent='Audit failed: '+event.message;auditWorker?.terminate();auditWorker=null;completeRun('Live experiment complete — audit failed'); };
+  auditWorker.postMessage({type:'run',config:{rate:config.rate,horizon:config.horizon,duration:config.duration,size:config.size,scenario:config.scenario,sensorNoise:config.sensorNoise}});
 }
 function stopExperiment(message='Stopped. Start again for a fresh stream.'){
-  clearTimeout(timer);timer=null;clearTimeout(finishTimer);finishTimer=null;clearTimeout(noticeTimer);worker?.terminate();worker=null;settling=false;setRunning(false);setStatus(message);$('changeNotice').hidden=true;
+  clearTimeout(timer);timer=null;clearTimeout(finishTimer);finishTimer=null;clearTimeout(noticeTimer);worker?.terminate();worker=null;auditWorker?.terminate();auditWorker=null;settling=false;setRunning(false);setStatus(message);$('changeNotice').hidden=true;
 }
 
 function sizeCanvas(element){
@@ -150,7 +171,7 @@ function drawChart(){
 
 $('pendulumSetup').addEventListener('submit',event=>{
   event.preventDefault();stopExperiment('Preparing the reservoir…');resetMetrics();config=readConfig();setRunning(true);setStatus('Preparing the fixed reservoir…',true);
-  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.5.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
+  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.6.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
   worker.postMessage({type:'init',size:config.size,seed:config.seed,horizon:config.horizon});
   if(innerWidth<=650)document.querySelector('.pendulum-results').scrollIntoView({behavior:'smooth',block:'start'});
 });

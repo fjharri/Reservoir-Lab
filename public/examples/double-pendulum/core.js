@@ -36,6 +36,18 @@
   function observation(state){
     return [Math.sin(state[0]),Math.cos(state[0]),clamp(state[1]/8,-2.5,2.5),Math.sin(state[2]),Math.cos(state[2]),clamp(state[3]/8,-2.5,2.5)];
   }
+  function createSensorModel({rate=60,seed=1,noiseDegrees=.35,quantizationDegrees=.1,smoothing=.35}={}){
+    const random=rng(seed),noise=noiseDegrees*Math.PI/180,quantum=quantizationDegrees*Math.PI/180;
+    let spare=null,previous=null,velocity=[0,0];
+    const normal=()=>{if(spare!==null){const value=spare;spare=null;return value;}const radius=Math.sqrt(-2*Math.log(Math.max(Number.EPSILON,random()))),angle=TAU*random();spare=radius*Math.sin(angle);return radius*Math.cos(angle);};
+    const quantize=value=>quantum?Math.round(value/quantum)*quantum:value;
+    return {observe(state){
+      const angles=[wrap(quantize(state[0]+normal()*noise)),wrap(quantize(state[2]+normal()*noise))];
+      if(previous) for(let i=0;i<2;i++){const estimate=wrap(angles[i]-previous[i])*rate;velocity[i]=(1-smoothing)*velocity[i]+smoothing*estimate;}
+      previous=angles;
+      return [Math.sin(angles[0]),Math.cos(angles[0]),clamp(velocity[0]/8,-2.5,2.5),Math.sin(angles[1]),Math.cos(angles[1]),clamp(velocity[1]/8,-2.5,2.5)];
+    }};
+  }
   function anglesFromObservation(value){return [Math.atan2(value[0],value[1]),Math.atan2(value[3],value[4])];}
   function angularErrorDegrees(predicted,actual){
     const p=anglesFromObservation(predicted),a=anglesFromObservation(actual);
@@ -97,5 +109,5 @@
     estimatedBytes(){return this.state.byteLength+this.next.byteLength+this.inputWeights.byteLength+this.bias.byteLength+this.links.byteLength+this.recurrent.byteLength+this.weights.byteLength+this.precision.byteLength;}
   }
 
-  return {wrap,stepPhysics,observation,anglesFromObservation,angularErrorDegrees,OnlineESN};
+  return {wrap,stepPhysics,observation,createSensorModel,anglesFromObservation,angularErrorDegrees,OnlineESN};
 });

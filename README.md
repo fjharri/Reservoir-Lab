@@ -3,7 +3,7 @@
 Reservoir Lab contains interactive browser experiments about recurrent learning under constrained compute. All model training and inference run on the visitor's device in Web Workers. Firebase Hosting only serves static files. No database, Firebase SDK, API key or server-side ML is needed.
 
 - **01 · Hydraulic comparison:** a fixed echo-state network (ESN) and a trainable gated recurrent unit (GRU) classify hydraulic valve condition under measured training budgets.
-- **02 · Adaptive double pendulum:** an explicitly engineered parameter-switch stress test where a sparse ESN adapts online, an identical frozen readout provides the no-learning counterfactual, and a monotonic scheduler reports the achieved rate, late ticks, dropped observations, and response deadlines.
+- **02 · Adaptive double pendulum:** an explicitly engineered parameter-switch stress test where a sparse ESN adapts online, an identical frozen readout provides the no-learning counterfactual, and a monotonic scheduler reports timing integrity. Optional toggles add noisy angle-only sensing and a five-seed robustness audit.
 
 ## Run locally
 

@@ -18,6 +18,12 @@ const first=new Core.OnlineESN({size:24,seed:7}),second=new Core.OnlineESN({size
 const sample=Core.observation([1,.2,-.4,.1]);
 assert.deepEqual([...first.advance(sample)],[...second.advance(sample)],'Reservoir state must be seeded and deterministic');
 
+const sensorA=Core.createSensorModel({rate:60,seed:19}),sensorB=Core.createSensorModel({rate:60,seed:19});
+const sensedA=[sensorA.observe([1,0,-.4,0]),sensorA.observe([1.01,.6,-.39,.6])],sensedB=[sensorB.observe([1,0,-.4,0]),sensorB.observe([1.01,.6,-.39,.6])];
+assert.deepEqual(sensedA,sensedB,'Noisy sensor observations must be deterministic for a seed');
+assert.notDeepEqual(sensedA[1],Core.observation([1.01,.6,-.39,.6]),'Sensor mode must not expose perfect simulator state');
+assert.ok(Math.abs(sensedA[1][2])>0&&Math.abs(sensedA[1][5])>0,'Angular velocity must be derived from successive angle readings');
+
 const model=new Core.OnlineESN({size:40,seed:42}),queue=[],pending=new Map(),early=[],late=[],horizon=4;
 for(let step=0;step<900;step++){
   const t=step/30,target=[Math.sin(t),Math.cos(t),Math.sin(t*.37),Math.sin(t*.71),Math.cos(t*.71),Math.cos(t*.23)];
@@ -33,4 +39,4 @@ model.update(probe,[1,0,1,0,1,0]);
 assert.deepEqual([...model.predict(probe,frozen)],[...frozenBefore],'Frozen readout prediction must remain unchanged while the adaptive weights update');
 assert.notDeepEqual([...model.predict(probe)],[...frozenBefore],'Adaptive readout must diverge from its frozen snapshot after an update');
 assert.ok(model.estimatedBytes()<2_000_000,'Default-scale online model should have bounded memory');
-console.log('PASS: stable double-pendulum integration, changing dynamics, deterministic reservoir, online delayed learning, frozen-readout counterfactual, bounded model memory.');
+console.log('PASS: stable double-pendulum integration, changing dynamics, deterministic reservoir and noisy sensors, online delayed learning, frozen-readout counterfactual, bounded model memory.');

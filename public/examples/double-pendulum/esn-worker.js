@@ -1,5 +1,5 @@
 'use strict';
-importScripts('core.js?v=0.5.0');
+importScripts('core.js?v=0.6.0');
 let model=null,horizon=1,features=[],frozenWeights=null;
 self.onmessage=({data:message})=>{
   try{
