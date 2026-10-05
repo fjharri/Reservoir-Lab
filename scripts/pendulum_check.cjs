@@ -28,5 +28,9 @@ for(let step=0;step<900;step++){
 }
 const mean=values=>values.reduce((sum,value)=>sum+value,0)/values.length;
 assert.ok(mean(late)<mean(early)*.35,`Online readout should learn the delayed stream (${mean(early)} -> ${mean(late)})`);
+const probe=model.advance([0,.8,.1,.2,.9,-.1]),frozen=model.weights.slice(),frozenBefore=model.predict(probe,frozen);
+model.update(probe,[1,0,1,0,1,0]);
+assert.deepEqual([...model.predict(probe,frozen)],[...frozenBefore],'Frozen readout prediction must remain unchanged while the adaptive weights update');
+assert.notDeepEqual([...model.predict(probe)],[...frozenBefore],'Adaptive readout must diverge from its frozen snapshot after an update');
 assert.ok(model.estimatedBytes()<2_000_000,'Default-scale online model should have bounded memory');
-console.log('PASS: stable double-pendulum integration, changing dynamics, deterministic reservoir, online delayed learning, bounded model memory.');
+console.log('PASS: stable double-pendulum integration, changing dynamics, deterministic reservoir, online delayed learning, frozen-readout counterfactual, bounded model memory.');

@@ -78,9 +78,9 @@
       feature.set(input,1);feature.set(this.state,1+this.inputSize);
       return feature;
     }
-    predict(feature){
+    predict(feature,weights=this.weights){
       const output=new Float64Array(this.outputSize);
-      for(let i=0;i<this.featureSize;i++) for(let o=0;o<this.outputSize;o++) output[o]+=feature[i]*this.weights[i*this.outputSize+o];
+      for(let i=0;i<this.featureSize;i++) for(let o=0;o<this.outputSize;o++) output[o]+=feature[i]*weights[i*this.outputSize+o];
       return output;
     }
     update(feature,target){

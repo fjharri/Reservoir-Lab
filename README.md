@@ -3,7 +3,7 @@
 Reservoir Lab contains interactive browser experiments about recurrent learning under constrained compute. All model training and inference run on the visitor's device in Web Workers. Firebase Hosting only serves static files. No database, Firebase SDK, API key or server-side ML is needed.
 
 - **01 · Hydraulic comparison:** a fixed echo-state network (ESN) and a trainable gated recurrent unit (GRU) classify hydraulic valve condition under measured training budgets.
-- **02 · Adaptive double pendulum:** a sparse ESN forecasts a chaotic physical system, updates its linear readout after every observation, and adapts when the system parameters change during the stream.
+- **02 · Adaptive double pendulum:** a sparse ESN forecasts a chaotic physical system and adapts when its parameters change; an identical frozen readout provides a live no-learning counterfactual.
 
 ## Run locally
 
