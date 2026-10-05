@@ -12,7 +12,7 @@ const baseUrl=process.env.RESERVOIR_LAB_URL||'http://127.0.0.1:8765';
  await page.locator('a[href="/examples/double-pendulum/"]').first().click();
  await page.waitForLoadState('networkidle');
  if(!(await page.locator('h1').innerText()).includes('Learn while')) throw Error('Pendulum route did not render');
- const pendulumDuration=process.env.PENDULUM_DURATION||'15';await page.locator('#reservoirSize').selectOption(process.env.PENDULUM_FULL_ONLY==='1'?'200':'100');await page.locator('#duration').selectOption(pendulumDuration);await page.locator('#startPendulum').click();
+ const pendulumDuration=process.env.PENDULUM_DURATION||'15';await page.locator('#reservoirSize').selectOption(process.env.PENDULUM_FULL_ONLY==='1'?'200':'100');await page.locator('#duration').selectOption(pendulumDuration);if(process.env.PENDULUM_SCENARIO)await page.locator('#physicsChange').selectOption(process.env.PENDULUM_SCENARIO);await page.locator('#startPendulum').click();
  await page.waitForFunction(()=>document.getElementById('updateTime').textContent!=='—',{timeout:10000});
  await page.waitForFunction(changeAt=>parseFloat(document.getElementById('pendulumClock').textContent)>=changeAt,+pendulumDuration*.4+.2,{timeout:(+pendulumDuration*.4+6)*1000});
  if((await page.locator('#pendulumStatus').innerText()).startsWith('Experiment failed')) throw Error(await page.locator('#pendulumStatus').innerText());
@@ -21,7 +21,8 @@ const baseUrl=process.env.RESERVOIR_LAB_URL||'http://127.0.0.1:8765';
  if(process.env.PENDULUM_FULL_ONLY==='1'){
   await page.waitForFunction(()=>document.getElementById('pendulumStatus').textContent==='Experiment complete',{timeout:(+pendulumDuration*.7+6)*1000});
   await page.screenshot({path:path.join(root,'work/pendulum-result.png'),fullPage:true});
-  const metrics=await page.evaluate(()=>({adaptive:document.getElementById('forecastError').textContent,frozen:document.getElementById('frozenError').textContent,update:document.getElementById('updateTime').textContent,missed:document.getElementById('deadlinesMissed').textContent,recovery:document.getElementById('recoveryTime').textContent,finding:document.getElementById('runFinding').textContent}));
+  const metrics=await page.evaluate(()=>({adaptive:document.getElementById('forecastError').textContent,frozen:document.getElementById('frozenError').textContent,update:document.getElementById('updateTime').textContent,missed:document.getElementById('deadlinesMissed').textContent,recovery:document.getElementById('recoveryTime').textContent,achieved:document.getElementById('achievedRate').textContent,lateTicks:document.getElementById('lateTicks').textContent,dropped:document.getElementById('droppedSamples').textContent,drift:document.getElementById('clockDrift').textContent,finding:document.getElementById('runFinding').textContent}));
+  if(!/Hz$/.test(metrics.achieved)||!/ms$/.test(metrics.drift)||!metrics.finding.includes('Engineered'))throw Error('Timing audit or stress-test disclosure missing from final result');
   console.log(JSON.stringify({errors,overflow:false,pendulum:metrics}));await browser.close();if(errors.length)process.exitCode=1;return;
  }
  await page.locator('#stopPendulum').click();

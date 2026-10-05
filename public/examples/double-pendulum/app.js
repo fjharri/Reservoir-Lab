@@ -1,10 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const canvas=$('pendulumCanvas'),chartCanvas=$('errorChart');
-let worker=null,timer=null,noticeTimer=null,running=false;
+let worker=null,timer=null,noticeTimer=null,finishTimer=null,running=false,settling=false;
 let state,physics,config,sampleId,totalSteps,changeStep,changed,latestAdaptive,latestFrozen;
 let predictions=new Map(),adaptiveErrors=[],frozenErrors=[],recentErrors=[],adaptiveAverage=null,frozenAverage=null,adaptivePostTotal=0,frozenPostTotal=0,postCount=0;
 let updateAverage=null,deadlineMisses=0,responseCount=0,recoveryStreak=0,recoverySeconds=null,baselineError=null,trail=[];
+let scheduleStartedAt=0,scheduleEndedAt=0,sentSamples=0,droppedSamples=0,lateTicks=0,inFlight=0;
+const MAX_CATCH_UP=4;
 
 const scenarios={
   load:{description:'Second mass increased × 2.2',apply:p=>{p.m2=2.2;}},
@@ -21,30 +23,47 @@ function setStatus(text,busy=false){$('pendulumStatus').textContent=text;$('pend
 function setRunning(active){running=active;$('pendulumFields').disabled=active;$('startPendulum').disabled=active;$('stopPendulum').hidden=!active;}
 function resetMetrics(){
   predictions=new Map();adaptiveErrors=[];frozenErrors=[];recentErrors=[];adaptiveAverage=null;frozenAverage=null;adaptivePostTotal=0;frozenPostTotal=0;postCount=0;updateAverage=null;deadlineMisses=0;responseCount=0;recoveryStreak=0;recoverySeconds=null;baselineError=null;trail=[];latestAdaptive=null;latestFrozen=null;
-  $('forecastError').textContent='—';$('frozenError').textContent='—';$('updateTime').textContent='—';$('deadlinesMissed').textContent='—';$('recoveryTime').textContent='—';$('recoveryNote').textContent='after physics change';$('pendulumClock').textContent='0.0 s';$('pendulumProgress').style.width='0';$('changeNotice').hidden=true;
-  $('runFinding').textContent='The physics will change 40% of the way through the run. Watch the error rise, then fall as the readout relearns online.';
+  scheduleStartedAt=0;scheduleEndedAt=0;sentSamples=0;droppedSamples=0;lateTicks=0;inFlight=0;settling=false;
+  $('forecastError').textContent='—';$('frozenError').textContent='—';$('updateTime').textContent='—';$('deadlinesMissed').textContent='—';$('recoveryTime').textContent='—';$('recoveryNote').textContent='must beat frozen for 2 s';$('pendulumClock').textContent='0.0 s';$('pendulumProgress').style.width='0';$('changeNotice').hidden=true;
+  $('achievedRate').textContent='—';$('lateTicks').textContent='0';$('droppedSamples').textContent='0';$('clockDrift').textContent='—';
+  $('runFinding').textContent='This is an engineered parameter-switch stress test. The physics changes 40% into the run and creates a frozen no-learning counterfactual.';
   drawChart();
 }
 function begin(){
   state=[1.72,0,1.08,0];physics={m1:1,m2:1,l1:1,l2:1,g:9.81,damping:.015};sampleId=0;totalSteps=config.duration*config.rate;changeStep=Math.round(totalSteps*.4);changed=false;
   $('deadlineText').textContent=`${config.interval.toFixed(1)} ms deadline`;
-  setStatus('Learning the initial dynamics…',true);setRunning(true);sendSample();drawPendulum();
-  timer=setInterval(step,config.interval);
+  setStatus('Learning the initial dynamics…',true);setRunning(true);scheduleStartedAt=performance.now();sendSample(PendulumCore.observation(state),scheduleStartedAt);drawPendulum();scheduleNext();
 }
-function step(){
-  if(!running)return;
+function advanceSample(deliver){
   sampleId++;
   if(sampleId===changeStep) applyPhysicsChange();
   state=PendulumCore.stepPhysics(state,physics,1/config.rate);
   const actual=PendulumCore.observation(state),prediction=predictions.get(sampleId);
   if(prediction){recordError(PendulumCore.angularErrorDegrees(prediction.adaptive,actual),prediction.frozen?PendulumCore.angularErrorDegrees(prediction.frozen,actual):null);predictions.delete(sampleId);}
   trail.push(position(state[0],state[2]));if(trail.length>90)trail.shift();
-  sendSample(actual);drawPendulum();
-  const elapsed=sampleId/config.rate;$('pendulumClock').textContent=elapsed.toFixed(1)+' s';$('pendulumProgress').style.width=Math.min(100,sampleId/totalSteps*100)+'%';
-  if(sampleId>=totalSteps) finish();
+  const scheduledAt=scheduleStartedAt+sampleId*config.interval;
+  if(deliver)sendSample(actual,scheduledAt);else droppedSamples++;
 }
-function sendSample(value=PendulumCore.observation(state)){
-  worker?.postMessage({type:'sample',id:sampleId,observation:value,sentAt:performance.now()});
+function schedule(){
+  if(!running||settling)return;
+  const now=performance.now(),due=Math.min(totalSteps,Math.floor((now-scheduleStartedAt)/config.interval)),backlog=Math.max(0,due-sampleId),toDrop=Math.max(0,backlog-MAX_CATCH_UP);
+  for(let i=0;i<toDrop;i++)advanceSample(false);
+  while(sampleId<due)advanceSample(true);
+  drawPendulum();updateScheduleMetrics(now);
+  if(sampleId>=totalSteps){endSchedule();return;}
+  scheduleNext();
+}
+function scheduleNext(){
+  clearTimeout(timer);const nextAt=scheduleStartedAt+(sampleId+1)*config.interval;timer=setTimeout(schedule,Math.max(0,nextAt-performance.now()));
+}
+function sendSample(value,scheduledAt){
+  const dispatchLag=performance.now()-scheduledAt;if(sampleId>0&&dispatchLag>config.interval)lateTicks++;
+  sentSamples++;inFlight++;worker?.postMessage({type:'sample',id:sampleId,observation:value,scheduledAt});
+}
+function updateScheduleMetrics(now=performance.now()){
+  const elapsed=Math.max(.001,Math.min(config.duration,(now-scheduleStartedAt)/1000)),achieved=Math.max(0,sentSamples-1)/elapsed,currentLag=Math.max(0,now-(scheduleStartedAt+sampleId*config.interval));
+  $('pendulumClock').textContent=(sampleId/config.rate).toFixed(1)+' s';$('pendulumProgress').style.width=Math.min(100,sampleId/totalSteps*100)+'%';
+  $('achievedRate').textContent=elapsed>.25?achieved.toFixed(1)+' Hz':'—';$('lateTicks').textContent=lateTicks.toLocaleString();$('droppedSamples').textContent=droppedSamples.toLocaleString();$('clockDrift').textContent=currentLag.toFixed(1)+' ms';
 }
 function applyPhysicsChange(){
   changed=true;baselineError=recentErrors.length?recentErrors.reduce((a,b)=>a+b,0)/recentErrors.length:null;
@@ -58,13 +77,10 @@ function recordError(adaptiveValue,frozenValue){
   const time=sampleId/config.rate;adaptiveErrors.push({time,value:adaptiveAverage});
   if(!changed){recentErrors.push(adaptiveValue);if(recentErrors.length>config.rate*3)recentErrors.shift();}
   if(frozenValue!==null){frozenAverage=frozenAverage===null?frozenValue:frozenAverage*.88+frozenValue*.12;$('frozenError').textContent=frozenAverage.toFixed(1)+'°';frozenErrors.push({time,value:frozenAverage});adaptivePostTotal+=adaptiveValue;frozenPostTotal+=frozenValue;postCount++;}
-  else if(recoverySeconds===null&&baselineError!==null){
-    recoveryStreak=0;
-  }
   if(changed&&recoverySeconds===null&&baselineError!==null){
-    const threshold=Math.max(5,baselineError*1.25),windowSteps=config.rate*2;
-    recoveryStreak=adaptiveAverage<=threshold?recoveryStreak+1:0;
-    if(recoveryStreak>=windowSteps){recoverySeconds=(sampleId-changeStep)/config.rate;$('recoveryTime').textContent=recoverySeconds.toFixed(1)+' s';$('recoveryNote').textContent='2 s sustained in prior range';setStatus('Recovery confirmed — continuing to learn',true);}
+    const threshold=Math.max(5,baselineError*1.25),windowSteps=config.rate*2,withinPriorRange=adaptiveAverage<=threshold,beatsFrozen=frozenAverage!==null&&adaptiveAverage<=frozenAverage*.75;
+    recoveryStreak=withinPriorRange&&beatsFrozen?recoveryStreak+1:0;
+    if(recoveryStreak>=windowSteps){recoverySeconds=(sampleId-changeStep)/config.rate;$('recoveryTime').textContent=recoverySeconds.toFixed(1)+' s';$('recoveryNote').textContent='prior range + 25% below frozen';setStatus('Recovery confirmed — continuing to learn',true);}
   }
   if(adaptiveErrors.length%3===0)drawChart();
 }
@@ -73,20 +89,31 @@ function handleWorker(message){
   if(message.type==='error'){stopExperiment('Experiment failed: '+message.message);return;}
   if(message.type==='frozen')return;
   if(message.type!=='prediction'||!running)return;
-  const latency=performance.now()-message.sentAt;responseCount++;if(latency>config.interval)deadlineMisses++;
+  inFlight=Math.max(0,inFlight-1);const latency=performance.now()-message.scheduledAt;responseCount++;if(latency>config.interval)deadlineMisses++;
   updateAverage=updateAverage===null?message.computeMs:updateAverage*.9+message.computeMs*.1;
   $('updateTime').textContent=updateAverage<10?updateAverage.toFixed(2)+' ms':updateAverage.toFixed(1)+' ms';$('deadlinesMissed').textContent=deadlineMisses.toLocaleString();
   if(message.targetId>sampleId) predictions.set(message.targetId,{adaptive:message.prediction,frozen:message.frozenPrediction});latestAdaptive=message.prediction;latestFrozen=message.frozenPrediction;
+  if(settling&&inFlight===0)finish();
+}
+function endSchedule(){
+  clearTimeout(timer);timer=null;scheduleEndedAt=performance.now();settling=true;updateScheduleMetrics(scheduleEndedAt);setStatus('Finishing in-flight updates…',true);
+  const drift=scheduleEndedAt-(scheduleStartedAt+totalSteps*config.interval);$('clockDrift').textContent=(drift>=0?'+':'')+drift.toFixed(1)+' ms';
+  if(inFlight===0)finish();else finishTimer=setTimeout(finish,1200);
 }
 function finish(){
-  clearInterval(timer);timer=null;worker?.terminate();worker=null;setRunning(false);setStatus('Experiment complete');$('pendulumProgress').style.width='100%';
+  if(!running)return;clearTimeout(finishTimer);finishTimer=null;
+  if(inFlight>0){deadlineMisses+=inFlight;responseCount+=inFlight;inFlight=0;$('deadlinesMissed').textContent=deadlineMisses.toLocaleString();}
+  worker?.terminate();worker=null;setRunning(false);settling=false;setStatus('Experiment complete');$('pendulumProgress').style.width='100%';
   const preMean=baselineError,adaptivePost=postCount?adaptivePostTotal/postCount:NaN,frozenPost=postCount?frozenPostTotal/postCount:NaN,advantage=Number.isFinite(frozenPost)&&frozenPost>0?(1-adaptivePost/frozenPost)*100:NaN,missRate=responseCount?deadlineMisses/responseCount*100:0;
+  const comparison=Number.isFinite(advantage)?advantage>=0?`${advantage.toFixed(0)}% lower`:`${Math.abs(advantage).toFixed(0)}% higher`:'';
+  const wallSeconds=(scheduleEndedAt-scheduleStartedAt)/1000,achieved=Math.max(0,sentSamples-1)/Math.max(.001,wallSeconds),drift=scheduleEndedAt-(scheduleStartedAt+totalSteps*config.interval);
+  $('achievedRate').textContent=achieved.toFixed(1)+' Hz';$('lateTicks').textContent=lateTicks.toLocaleString();$('droppedSamples').textContent=droppedSamples.toLocaleString();$('clockDrift').textContent=(drift>=0?'+':'')+drift.toFixed(1)+' ms';
   if(recoverySeconds===null){$('recoveryTime').textContent='Not yet';$('recoveryNote').textContent='within this run';}
-  $('runFinding').textContent=`During the three seconds before the change, mean error was ${Number.isFinite(preMean)?preMean.toFixed(1)+'°':'unavailable'}. Afterwards, the adaptive readout averaged ${Number.isFinite(adaptivePost)?adaptivePost.toFixed(1)+'°':'unavailable'} versus ${Number.isFinite(frozenPost)?frozenPost.toFixed(1)+'°':'unavailable'} for the frozen readout${Number.isFinite(advantage)?` — ${Math.max(0,advantage).toFixed(0)}% lower`:''}. It missed ${deadlineMisses} of ${responseCount} deadlines (${missRate.toFixed(1)}%)${recoverySeconds===null?'; recovery was not confirmed before the run ended':` and confirmed recovery after ${recoverySeconds.toFixed(1)} seconds`}.`;
+  $('runFinding').textContent=`Engineered ${scenarios[config.scenario].description.toLowerCase()}: during the three seconds before the switch, mean error was ${Number.isFinite(preMean)?preMean.toFixed(1)+'°':'unavailable'}. Afterwards, adaptive averaged ${Number.isFinite(adaptivePost)?adaptivePost.toFixed(1)+'°':'unavailable'} versus ${Number.isFinite(frozenPost)?frozenPost.toFixed(1)+'°':'unavailable'} frozen${comparison?` — ${comparison}`:''}. The stream achieved ${achieved.toFixed(1)} Hz, dropped ${droppedSamples} samples and missed ${deadlineMisses} of ${responseCount} response deadlines (${missRate.toFixed(1)}%)${recoverySeconds===null?'; recovery was not confirmed':` with recovery confirmed after ${recoverySeconds.toFixed(1)} seconds`}.`;
   drawChart();
 }
 function stopExperiment(message='Stopped. Start again for a fresh stream.'){
-  clearInterval(timer);timer=null;clearTimeout(noticeTimer);worker?.terminate();worker=null;setRunning(false);setStatus(message);$('changeNotice').hidden=true;
+  clearTimeout(timer);timer=null;clearTimeout(finishTimer);finishTimer=null;clearTimeout(noticeTimer);worker?.terminate();worker=null;settling=false;setRunning(false);setStatus(message);$('changeNotice').hidden=true;
 }
 
 function sizeCanvas(element){
@@ -123,7 +150,7 @@ function drawChart(){
 
 $('pendulumSetup').addEventListener('submit',event=>{
   event.preventDefault();stopExperiment('Preparing the reservoir…');resetMetrics();config=readConfig();setRunning(true);setStatus('Preparing the fixed reservoir…',true);
-  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.4.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
+  worker=new Worker('/examples/double-pendulum/esn-worker.js?v=0.5.0');worker.onmessage=({data})=>handleWorker(data);worker.onerror=event=>stopExperiment('Could not start the learning worker: '+event.message);
   worker.postMessage({type:'init',size:config.size,seed:config.seed,horizon:config.horizon});
   if(innerWidth<=650)document.querySelector('.pendulum-results').scrollIntoView({behavior:'smooth',block:'start'});
 });
